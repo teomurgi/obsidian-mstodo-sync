@@ -4,8 +4,8 @@
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Bidirectional sync between Obsidian tasks and Microsoft To Do (personal accounts only)",
-	"author": "Your Name",
-	"authorUrl": "",
+	"author": "Matteo Murgida",
+	"authorUrl": "https://github.com/teomurgi",
 	"fundingUrl": "",
 	"isDesktopOnly": false
 }
