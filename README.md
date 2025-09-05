@@ -1,8 +1,18 @@
 # Obsidian Microsoft To Do Sync Plugin
 
-A plugin that provides bidirectional synchronization between Obsidian tasks and Microsoft To Do.
+A high-quality, well-documented plugin that provides robust bidirectional synchronization between Obsidian tasks and Microsoft To Do.
 
 **⚠️ Personal Accounts Only**: This plugin is designed for personal Microsoft accounts (outlook.com, hotmail.com, live.com, xbox.com). It does not support work/school accounts.
+
+## Code Quality & Architecture
+
+This plugin is built with maintainability and reliability in mind:
+
+- **Comprehensive Documentation**: Full JSDoc comments for all classes, methods, and interfaces
+- **Advanced Conflict Resolution**: State-tracking system prevents sync loops and handles concurrent edits intelligently
+- **Tasks Plugin Compatibility**: Preserves metadata from the popular Obsidian Tasks plugin during sync
+- **Robust Error Handling**: Detailed logging and graceful error recovery throughout
+- **TypeScript**: Fully typed codebase for better development experience and fewer bugs
 
 ## Features
 

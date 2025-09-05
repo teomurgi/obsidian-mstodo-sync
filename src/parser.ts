@@ -60,6 +60,12 @@ export class TaskParser {
 	public static readonly RECURRENCE_REGEX = /🔁\s*[^🔗\s]+/;
 	public static readonly DONE_DATE_REGEX = /✅\s*\d{4}-\d{2}-\d{2}/;
 
+	/**
+	 * Parse all tasks from Obsidian file content
+	 * @param content - Raw markdown content from an Obsidian file
+	 * @param file - TFile instance for the source file
+	 * @returns Array of parsed ObsidianTask objects
+	 */
 	parseObsidianTasks(content: string, file: TFile): ObsidianTask[] {
 		const tasks: ObsidianTask[] = [];
 		const lines = content.split('\n');
@@ -72,7 +78,7 @@ export class TaskParser {
 				const [, indent, checkboxState, taskText] = match;
 				const completed = checkboxState.toLowerCase() === 'x';
 				
-				// Debug logging for task parsing
+				// Debug logging for task parsing to help troubleshoot sync issues
 				console.log('Parsing task:', {
 					line: i,
 					originalLine: line,
@@ -96,6 +102,12 @@ export class TaskParser {
 
 		return tasks;
 	}
+
+	/**
+	 * Parse metadata from task text (due dates, priorities, tags, MS To Do links)
+	 * @param taskText - The text content of the task (after the checkbox)
+	 * @returns Partial ObsidianTask with parsed metadata
+	 */
 
 	private parseTaskMetadata(taskText: string): Partial<ObsidianTask> {
 		const metadata: Partial<ObsidianTask> = {};
@@ -194,6 +206,12 @@ export class TaskParser {
 		return obsidianTask;
 	}
 
+	/**
+	 * Remove all formatting and metadata from task text to get core content for comparison
+	 * This is crucial for sync logic to determine if task content actually changed
+	 * @param text - Raw task text with all formatting and metadata
+	 * @returns Clean task text without any formatting or metadata
+	 */
 	cleanTaskText(text: string): string {
 		// Remove ALL formatting and metadata to get core task text for comparison
 		return text
@@ -215,12 +233,23 @@ export class TaskParser {
 			.trim();
 	}
 
-	// Get a stable identifier for a task that ignores formatting changes
+	/**
+	 * Get a stable identifier for a task that ignores formatting changes
+	 * Used for duplicate detection and content comparison
+	 * @param text - Task text to create identifier from
+	 * @returns Normalized task identifier string
+	 */
 	getTaskIdentity(text: string): string {
 		return this.cleanTaskText(text).toLowerCase().replace(/[^\w\s]/g, '').trim();
 	}
 
-	// Merge MS To Do changes with existing Obsidian task, preserving Tasks plugin metadata
+	/**
+	 * Merge MS To Do changes with existing Obsidian task while preserving Tasks plugin metadata
+	 * This is crucial for maintaining compatibility with the popular Obsidian Tasks plugin
+	 * @param obsidianTask - Original Obsidian task with existing metadata
+	 * @param msTask - Updated Microsoft To Do task with new data
+	 * @returns Merged task with MS To Do updates and preserved Obsidian metadata
+	 */
 	mergeTaskWithExisting(obsidianTask: ObsidianTask, msTask: MSToDoTask): ObsidianTask {
 		// Extract existing Tasks plugin metadata from original text
 		const originalText = obsidianTask.text;
