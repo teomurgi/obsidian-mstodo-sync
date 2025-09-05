@@ -2,15 +2,35 @@ import { App, TFile, Notice } from 'obsidian';
 import { MSToDoAuth } from './auth';
 import { TaskParser, ObsidianTask, MSToDoTask } from './parser';
 
+/**
+ * Task Synchronization Engine
+ * Handles bidirectional synchronization between Obsidian tasks and Microsoft To Do
+ * Features advanced conflict resolution using state tracking to prevent sync loops
+ */
 export class TaskSync {
 	private parser: TaskParser;
+	/** Set of task IDs that were recently updated to prevent sync loops */
 	private recentlyUpdatedTasks = new Set<string>();
+	/** Map of last known task states for change detection */
 	private lastKnownStates = new Map<string, { completed: boolean, lastSync: number }>();
 
+	/**
+	 * Initialize the sync engine
+	 * @param auth - Authentication handler for Microsoft Graph API
+	 * @param app - Obsidian app instance for file operations
+	 */
 	constructor(private auth: MSToDoAuth, private app: App) {
 		this.parser = new TaskParser();
 	}
 
+	/**
+	 * Make an authenticated request to Microsoft Graph API
+	 * @param endpoint - API endpoint path (e.g., '/me/todo/lists')
+	 * @param method - HTTP method (default: GET)
+	 * @param body - Request body for POST/PATCH requests
+	 * @returns Promise resolving to API response data
+	 * @throws Error if API request fails
+	 */
 	private async makeGraphRequest(endpoint: string, method: string = 'GET', body?: any): Promise<any> {
 		const token = await this.auth.getAccessToken();
 		
@@ -45,19 +65,22 @@ export class TaskSync {
 		return await response.json();
 	}
 
+	/**
+	 * Perform bidirectional synchronization between Obsidian and Microsoft To Do
+	 * Uses advanced conflict resolution to prevent sync loops and handle concurrent edits
+	 */
 	async performBidirectionalSync(): Promise<void> {
 		// Add a delay to ensure any recent file changes are saved
 		// This is important when sync is triggered immediately after task state changes
 		await new Promise(resolve => setTimeout(resolve, 500));
 		
-		// Clear recently updated tasks at the start of sync
-		// But keep a small delay buffer for very rapid syncs
+		// Clear recently updated tasks with a delay buffer for very rapid syncs
 		setTimeout(() => {
 			this.recentlyUpdatedTasks.clear();
 		}, 2000);
 
 		try {
-			// Get all tasks from both sources
+			// Get all tasks from both sources in parallel
 			const [obsidianTasks, msToDoTasks] = await Promise.all([
 				this.getAllObsidianTasks(),
 				this.getAllMSToDoTasks()

@@ -1,10 +1,20 @@
 import { PublicClientApplication, Configuration, AuthenticationResult, SilentRequest, RedirectRequest } from '@azure/msal-browser';
 
+/**
+ * Microsoft To Do Authentication Handler
+ * Manages OAuth 2.0 authentication using MSAL (Microsoft Authentication Library)
+ * Supports both automatic popup authentication and manual token input
+ */
 export class MSToDoAuth {
 	private msalInstance: PublicClientApplication;
 	private config: Configuration;
 	private accessToken: string | null = null;
 
+	/**
+	 * Initialize authentication with Azure app configuration
+	 * @param clientId - Azure App Registration Client ID
+	 * @param tenantId - Azure tenant ID ('consumers' for personal accounts)
+	 */
 	constructor(clientId: string, tenantId: string = 'consumers') {
 		this.config = {
 			auth: {
@@ -23,6 +33,10 @@ export class MSToDoAuth {
 		}
 	}
 
+	/**
+	 * Update the client ID and reinitialize MSAL instance
+	 * @param clientId - New Azure App Registration Client ID
+	 */
 	updateClientId(clientId: string) {
 		this.config.auth.clientId = clientId;
 		if (clientId) {
@@ -30,6 +44,10 @@ export class MSToDoAuth {
 		}
 	}
 
+	/**
+	 * Update the tenant ID and reinitialize MSAL instance
+	 * @param tenantId - New Azure tenant ID
+	 */
 	updateTenantId(tenantId: string) {
 		this.config.auth.authority = `https://login.microsoftonline.com/${tenantId}`;
 		if (this.config.auth.clientId) {
@@ -37,6 +55,11 @@ export class MSToDoAuth {
 		}
 	}
 
+	/**
+	 * Authenticate with Microsoft using OAuth 2.0
+	 * Attempts silent authentication first, then fallback to manual browser authentication
+	 * @throws Error if authentication fails or client ID is not configured
+	 */
 	async authenticate(): Promise<void> {
 		if (!this.msalInstance) {
 			throw new Error('Client ID not configured');
@@ -44,7 +67,7 @@ export class MSToDoAuth {
 
 		await this.msalInstance.initialize();
 		
-		// Try silent authentication first
+		// Try silent authentication first (if user previously authenticated)
 		const accounts = this.msalInstance.getAllAccounts();
 		if (accounts.length > 0) {
 			const silentRequest: SilentRequest = {
@@ -78,6 +101,10 @@ export class MSToDoAuth {
 		throw new Error('Please complete authentication in your browser, then restart Obsidian and try again.');
 	}
 
+	/**
+	 * Generate OAuth 2.0 authorization URL for manual authentication
+	 * @returns Authorization URL string
+	 */
 	private getAuthUrl(): string {
 		const params = new URLSearchParams({
 			client_id: this.config.auth.clientId,
@@ -90,7 +117,11 @@ export class MSToDoAuth {
 		return `${this.config.auth.authority}/oauth2/v2.0/authorize?${params.toString()}`;
 	}
 
-	// Add method to validate token format
+	/**
+	 * Validate that a token has the expected JWT format
+	 * @param token - Token string to validate
+	 * @returns True if token appears to be a valid JWT
+	 */
 	private validateTokenFormat(token: string): boolean {
 		// Microsoft Graph access tokens should be in JWT format (3 parts separated by dots)
 		const parts = token.split('.');

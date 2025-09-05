@@ -1,5 +1,8 @@
 import { TFile, CachedMetadata } from 'obsidian';
 
+/**
+ * Obsidian task representation with metadata
+ */
 export interface ObsidianTask {
 	id?: string;
 	text: string;
@@ -14,6 +17,9 @@ export interface ObsidianTask {
 	lastModified?: Date;
 }
 
+/**
+ * Microsoft To Do task representation (from Graph API)
+ */
 export interface MSToDoTask {
 	id: string;
 	title: string;
@@ -33,7 +39,13 @@ export interface MSToDoTask {
 	obsidianLine?: number;
 }
 
+/**
+ * Task Parser and Format Converter
+ * Handles parsing Obsidian task syntax and converting between Obsidian and Microsoft To Do formats
+ * Supports various task metadata including due dates, priorities, tags, and MS To Do links
+ */
 export class TaskParser {
+	// Core task parsing regex patterns
 	private static readonly TASK_REGEX = /^(\s*)-\s*\[([ xX])\]\s*(.+)$/;
 	private static readonly DUE_DATE_REGEX = /📅\s*(\d{4}-\d{2}-\d{2})/;
 	private static readonly PRIORITY_REGEX = /(🔺|⏫|🔻)/;
@@ -41,7 +53,7 @@ export class TaskParser {
 	private static readonly MSTODO_ID_REGEX = /\[ms-todo:([^\]]+)\]/;
 	private static readonly MSTODO_LINK_REGEX = /\[🔗 MS To Do\]\(ms-todo:([^)]+)\)/;
 	
-	// Tasks plugin patterns
+	// Tasks plugin compatibility patterns (preserved during sync)
 	public static readonly COMPLETION_DATE_REGEX = /✅\s*(\d{4}-\d{2}-\d{2})/;
 	public static readonly START_DATE_REGEX = /🛫\s*(\d{4}-\d{2}-\d{2})/;
 	public static readonly SCHEDULED_DATE_REGEX = /⏰\s*(\d{4}-\d{2}-\d{2})/;

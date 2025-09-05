@@ -3,26 +3,43 @@ import { MSToDoAuth } from './auth';
 import { TaskSync } from './sync';
 import { TaskParser } from './parser';
 
+/**
+ * Plugin settings interface for Microsoft To Do synchronization
+ */
 interface MSToDoSyncSettings {
+	/** Azure App Registration Client ID */
 	clientId: string;
+	/** Azure tenant ID - fixed to 'consumers' for personal accounts */
 	tenantId: string;
+	/** Auto-sync interval in milliseconds */
 	syncInterval: number;
+	/** Whether auto-sync is enabled */
 	autoSync: boolean;
+	/** Default Microsoft To Do list name for new tasks */
 	defaultList: string;
+	/** Timestamp of last successful sync */
 	lastSyncTime: number;
+	/** Stored access token for authentication */
 	accessToken: string;
 }
 
+/**
+ * Default plugin settings
+ */
 const DEFAULT_SETTINGS: MSToDoSyncSettings = {
-	clientId: '', // See setup instructions below for alternatives
-	tenantId: 'consumers',
-	syncInterval: 300000, // 5 minutes
+	clientId: '', // User must configure Azure App Registration Client ID
+	tenantId: 'consumers', // Fixed for personal Microsoft accounts only
+	syncInterval: 300000, // 5 minutes in milliseconds
 	autoSync: true,
 	defaultList: '',
 	lastSyncTime: 0,
 	accessToken: ''
 };
 
+/**
+ * Main plugin class for Microsoft To Do synchronization
+ * Handles plugin lifecycle, settings, authentication, and sync coordination
+ */
 export default class MSToDoSyncPlugin extends Plugin {
 	settings: MSToDoSyncSettings;
 	auth: MSToDoAuth;
@@ -30,9 +47,13 @@ export default class MSToDoSyncPlugin extends Plugin {
 	taskParser: TaskParser;
 	syncInterval: NodeJS.Timeout | null = null;
 
+	/**
+	 * Plugin initialization - called when plugin is loaded
+	 */
 	async onload() {
 		await this.loadSettings();
 
+		// Initialize authentication with configured client ID
 		this.auth = new MSToDoAuth(this.settings.clientId, this.settings.tenantId);
 		
 		// Load saved access token if available
@@ -40,15 +61,38 @@ export default class MSToDoSyncPlugin extends Plugin {
 			this.auth.setManualToken(this.settings.accessToken);
 		}
 		
+		// Initialize sync engine and parser
 		this.taskSync = new TaskSync(this.auth, this.app);
 		this.taskParser = new TaskParser();
 
-		// Add ribbon icon
+		// Add UI elements
+		this.setupUI();
+
+		// Start auto-sync if enabled
+		if (this.settings.autoSync) {
+			this.startAutoSync();
+		}
+	}
+
+	/**
+	 * Plugin cleanup - called when plugin is unloaded
+	 */
+	onunload() {
+		if (this.syncInterval) {
+			clearInterval(this.syncInterval);
+		}
+	}
+
+	/**
+	 * Set up user interface elements (ribbon, commands, settings)
+	 */
+	private setupUI() {
+		// Add ribbon icon for quick sync
 		this.addRibbonIcon('sync', 'Sync with Microsoft To Do', async (evt: MouseEvent) => {
 			await this.performSync();
 		});
 
-		// Add command
+		// Add command for sync
 		this.addCommand({
 			id: 'sync-mstodo',
 			name: 'Sync with Microsoft To Do',
@@ -57,7 +101,7 @@ export default class MSToDoSyncPlugin extends Plugin {
 			}
 		});
 
-		// Add command to authenticate
+		// Add command for authentication
 		this.addCommand({
 			id: 'auth-mstodo',
 			name: 'Authenticate with Microsoft To Do',
@@ -68,27 +112,26 @@ export default class MSToDoSyncPlugin extends Plugin {
 
 		// Add settings tab
 		this.addSettingTab(new MSToDoSyncSettingTab(this.app, this));
-
-		// Start auto-sync if enabled
-		if (this.settings.autoSync) {
-			this.startAutoSync();
-		}
 	}
 
-	onunload() {
-		if (this.syncInterval) {
-			clearInterval(this.syncInterval);
-		}
-	}
-
+	/**
+	 * Load plugin settings from Obsidian's data storage
+	 */
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
+	/**
+	 * Save plugin settings to Obsidian's data storage
+	 */
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
 
+	/**
+	 * Authenticate with Microsoft using OAuth 2.0
+	 * Shows user-friendly error messages for common issues
+	 */
 	async authenticate() {
 		if (!this.settings.clientId) {
 			new Notice('Please configure your Microsoft App Client ID in settings first');
@@ -104,6 +147,10 @@ export default class MSToDoSyncPlugin extends Plugin {
 		}
 	}
 
+	/**
+	 * Perform bidirectional synchronization between Obsidian and Microsoft To Do
+	 * Updates last sync time on success
+	 */
 	async performSync() {
 		if (!this.auth.isAuthenticated()) {
 			new Notice('Please authenticate with Microsoft To Do first');
@@ -122,6 +169,10 @@ export default class MSToDoSyncPlugin extends Plugin {
 		}
 	}
 
+	/**
+	 * Start automatic synchronization at configured intervals
+	 * Clears any existing interval before starting new one
+	 */
 	startAutoSync() {
 		if (this.syncInterval) {
 			clearInterval(this.syncInterval);
@@ -134,6 +185,9 @@ export default class MSToDoSyncPlugin extends Plugin {
 		}, this.settings.syncInterval);
 	}
 
+	/**
+	 * Stop automatic synchronization
+	 */
 	stopAutoSync() {
 		if (this.syncInterval) {
 			clearInterval(this.syncInterval);
@@ -142,6 +196,10 @@ export default class MSToDoSyncPlugin extends Plugin {
 	}
 }
 
+/**
+ * Settings tab for configuring Microsoft To Do synchronization
+ * Provides UI for authentication, sync preferences, and setup instructions
+ */
 class MSToDoSyncSettingTab extends PluginSettingTab {
 	plugin: MSToDoSyncPlugin;
 
@@ -150,13 +208,35 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	/**
+	 * Display the settings interface
+	 */
 	display(): void {
 		const { containerEl } = this;
-
 		containerEl.empty();
 
 		containerEl.createEl('h2', { text: 'Microsoft To Do Sync Settings' });
 
+		// Core configuration settings
+		this.addClientIdSetting(containerEl);
+		this.addAccountTypeSetting(containerEl);
+		this.addSyncSettings(containerEl);
+		this.addDefaultListSetting(containerEl);
+
+		// Authentication section
+		this.addAuthenticationSection(containerEl);
+
+		// Setup instructions
+		this.addSetupInstructions(containerEl);
+
+		// Status display
+		this.addStatusDisplay(containerEl);
+	}
+
+	/**
+	 * Add Client ID configuration setting
+	 */
+	private addClientIdSetting(containerEl: HTMLElement) {
 		new Setting(containerEl)
 			.setName('Microsoft App Client ID')
 			.setDesc('Your Azure App Registration Client ID (configured for personal Microsoft accounts only)')
@@ -168,7 +248,12 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					this.plugin.auth.updateClientId(value);
 				}));
+	}
 
+	/**
+	 * Add account type display (read-only)
+	 */
+	private addAccountTypeSetting(containerEl: HTMLElement) {
 		new Setting(containerEl)
 			.setName('Account Type')
 			.setDesc('This plugin is configured for personal Microsoft accounts only (outlook.com, hotmail.com, live.com)')
@@ -176,7 +261,13 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 				.setPlaceholder('consumers (fixed)')
 				.setValue('consumers')
 				.setDisabled(true));
+	}
 
+	/**
+	 * Add sync-related settings (auto-sync toggle and interval)
+	 */
+	private addSyncSettings(containerEl: HTMLElement) {
+		// Auto-sync toggle
 		new Setting(containerEl)
 			.setName('Auto Sync')
 			.setDesc('Automatically sync tasks at regular intervals')
@@ -192,6 +283,7 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 					}
 				}));
 
+		// Sync interval slider
 		new Setting(containerEl)
 			.setName('Sync Interval')
 			.setDesc('How often to sync (in minutes)')
@@ -206,7 +298,12 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 						this.plugin.startAutoSync();
 					}
 				}));
+	}
 
+	/**
+	 * Add default list setting
+	 */
+	private addDefaultListSetting(containerEl: HTMLElement) {
 		new Setting(containerEl)
 			.setName('Default To Do List')
 			.setDesc('Default Microsoft To Do list for new tasks')
@@ -217,10 +314,15 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 					this.plugin.settings.defaultList = value;
 					await this.plugin.saveSettings();
 				}));
+	}
 
-		// Authentication section
+	/**
+	 * Add authentication section with sign-in and manual token options
+	 */
+	private addAuthenticationSection(containerEl: HTMLElement) {
 		containerEl.createEl('h3', { text: 'Authentication' });
 
+		// Sign in button
 		new Setting(containerEl)
 			.setName('Authenticate')
 			.setDesc('Sign in to your Microsoft account')
@@ -231,6 +333,7 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 					await this.plugin.authenticate();
 				}));
 
+		// Manual token input
 		new Setting(containerEl)
 			.setName('Manual Token')
 			.setDesc('Paste the complete redirect URL or just the access token - the plugin will automatically extract it')
@@ -253,6 +356,7 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 					}
 				}));
 
+		// Manual auth instructions button
 		new Setting(containerEl)
 			.setName('Manual Auth Instructions')
 			.setDesc('Click to show manual authentication steps')
@@ -264,7 +368,7 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 					console.log('Manual Auth Instructions:', instructions);
 				}));
 
-		// Add button to clear saved token
+		// Clear token button
 		new Setting(containerEl)
 			.setName('Clear Saved Token')
 			.setDesc('Remove the saved access token from settings')
@@ -273,13 +377,13 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 				.setWarning()
 				.onClick(async () => {
 					this.plugin.settings.accessToken = '';
-					await this.plugin.saveSettings();
-					this.plugin.auth.clearToken();
-					new Notice('🗑️ Saved token cleared. You will need to re-authenticate.');
-					this.display();
 				}));
+	}
 
-		// Add setup alternatives 
+	/**
+	 * Add setup instructions for Azure app registration
+	 */
+	private addSetupInstructions(containerEl: HTMLElement) {
 		const setupEl = containerEl.createEl('div', { cls: 'setting-item' });
 		setupEl.createEl('div', { text: 'Setup Options:', cls: 'setting-item-name' });
 		const setupDesc = setupEl.createEl('div', { cls: 'setting-item-description' });
@@ -300,8 +404,12 @@ class MSToDoSyncSettingTab extends PluginSettingTab {
 			• Manual export/import workflows
 		`;
 		setupEl.appendChild(setupDesc);
+	}
 
-		// Status display
+	/**
+	 * Add status display showing authentication and last sync time
+	 */
+	private addStatusDisplay(containerEl: HTMLElement) {
 		const statusEl = containerEl.createEl('div', { cls: 'setting-item' });
 		statusEl.createEl('div', { cls: 'setting-item-info' });
 		const statusDesc = statusEl.createEl('div', { cls: 'setting-item-description' });
