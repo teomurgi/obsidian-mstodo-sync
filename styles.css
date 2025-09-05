@@ -1,0 +1,140 @@
+/* Microsoft To Do Sync Plugin Styles */
+
+.mstodo-sync-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    background: var(--background-secondary);
+    margin: 8px 0;
+}
+
+.mstodo-sync-status.authenticated {
+    background: var(--color-green-faint);
+    color: var(--color-green);
+}
+
+.mstodo-sync-status.error {
+    background: var(--color-red-faint);
+    color: var(--color-red);
+}
+
+.mstodo-sync-button {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.mstodo-sync-button:hover {
+    background: var(--interactive-accent-hover);
+}
+
+.mstodo-sync-button:disabled {
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.mstodo-settings-section {
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+}
+
+.mstodo-settings-section h3 {
+    margin: 0 0 12px 0;
+    color: var(--text-normal);
+    font-size: 1.1em;
+}
+
+.mstodo-settings-description {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+.mstodo-task-indicator {
+    opacity: 0.6;
+    font-size: 0.8em;
+    margin-left: 8px;
+}
+
+/* Task list styling for synced tasks */
+.markdown-rendered .task-list-item[data-mstodo-id] {
+    position: relative;
+}
+
+.markdown-rendered .task-list-item[data-mstodo-id]::after {
+    content: "📋";
+    position: absolute;
+    right: 4px;
+    top: 2px;
+    opacity: 0.5;
+    font-size: 0.8em;
+}
+
+/* Priority indicators */
+.mstodo-priority-high {
+    color: var(--color-red);
+}
+
+.mstodo-priority-low {
+    color: var(--color-blue);
+}
+
+/* Sync status indicator in status bar */
+.status-bar-item.mstodo-status {
+    cursor: pointer;
+}
+
+.status-bar-item.mstodo-status:hover {
+    background: var(--background-modifier-hover);
+}
+
+.mstodo-status-icon {
+    margin-right: 4px;
+}
+
+.mstodo-status-text {
+    font-size: 11px;
+}
+
+/* Loading states */
+.mstodo-syncing {
+    opacity: 0.7;
+}
+
+.mstodo-sync-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--background-modifier-border);
+    border-radius: 50%;
+    border-top-color: var(--interactive-accent);
+    animation: mstodo-spin 1s ease-in-out infinite;
+}
+
+@keyframes mstodo-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Settings form styling */
+.setting-item-control input[type="text"] {
+    min-width: 200px;
+}
+
+.setting-item-description code {
+    background: var(--background-secondary);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
